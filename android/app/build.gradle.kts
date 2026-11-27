@@ -35,7 +35,7 @@ android {
     // 金鑰由 GitHub Actions 從 secrets 帶入（ANDROID_KEYSTORE_BASE64、ANDROID_KEYSTORE_PASSWORD）；
     // 沒有設定時退回 debug 金鑰（每次打包都不一樣，更新時要先移除舊版）。
     val keystoreB64 = System.getenv("ANDROID_KEYSTORE_BASE64").orEmpty()
-    val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty()
+    val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty().trim()
     val hasReleaseKey = keystoreB64.isNotBlank() && keystorePassword.isNotBlank()
     signingConfigs {
         create("release") {
