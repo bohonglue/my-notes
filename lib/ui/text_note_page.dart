@@ -128,6 +128,8 @@ class _TextNotePageState extends State<TextNotePage> {
                     showHeaderStyle: false,
                     showAlignmentButtons: false,
                     showColorButton: false,
+                    // 「清除格式」只對選取的文字有效，沒選字時按了沒反應，容易誤會，先拿掉。
+                    showClearFormat: false,
                   ),
                 ),
               ),
