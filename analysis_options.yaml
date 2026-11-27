@@ -1,0 +1,11 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - windows/**
+  errors:
+    # flutter_quill 仍使用 package:flutter/material.dart，整個專案先統一用它，
+    # 等 flutter_quill 改用 material_ui 再一起換。
+    deprecated_member_use: ignore
