@@ -144,10 +144,11 @@ class NotesStore extends ChangeNotifier {
     );
   }
 
-  /// 儲存筆記（新增或更新）。空白的新筆記不會存。
-  Future<void> save(Note n, {bool touch = true}) async {
+  /// 儲存筆記（新增或更新）。空白的新筆記不會存，除非 [allowEmpty]
+  /// （例如手寫筆記沒有文字，但有筆畫）。
+  Future<void> save(Note n, {bool touch = true, bool allowEmpty = false}) async {
     final isNew = noteById(n.id) == null;
-    if (isNew && n.title.trim().isEmpty && n.plainText.trim().isEmpty) return;
+    if (isNew && !allowEmpty && n.title.trim().isEmpty && n.plainText.trim().isEmpty) return;
     if (touch) n.updatedAt = DateTime.now();
     await db.upsertNote(n);
     if (isNew) _notes.add(n);

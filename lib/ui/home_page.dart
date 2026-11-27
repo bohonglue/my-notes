@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../data/ink.dart';
 import '../data/models.dart';
 import '../state/notes_store.dart';
 import '../state/settings_store.dart';
 import 'checklist_page.dart';
+import 'handwriting_page.dart';
+import 'ink_painter.dart';
 import 'note_actions.dart';
 import 'note_colors.dart';
 import 'settings_page.dart';
@@ -38,7 +41,8 @@ class _HomePageState extends State<HomePage> {
   void _open(Note n) {
     final page = switch (n.type) {
       NoteType.checklist => ChecklistPage(note: n),
-      _ => TextNotePage(note: n),
+      NoteType.handwriting => HandwritingPage(note: n),
+      NoteType.text => TextNotePage(note: n),
     };
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
@@ -144,6 +148,11 @@ class _NewNoteButton extends StatelessWidget {
           onPressed: () => onCreate(NoteType.checklist),
           child: const Text('待辦清單'),
         ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.draw_outlined),
+          onPressed: () => onCreate(NoteType.handwriting),
+          child: const Text('手寫筆記'),
+        ),
       ],
       builder: (context, ctrl, _) => FloatingActionButton(
         tooltip: '新增',
@@ -243,6 +252,8 @@ class _NoteCard extends StatelessWidget {
                           style: it.checked ? const TextStyle(decoration: TextDecoration.lineThrough) : null),
                     ),
                   ])
+              else if (note.type == NoteType.handwriting)
+                InkThumbnail(page: InkPage.decode(note.content))
               else if (note.plainText.isNotEmpty)
                 Text(note.plainText, maxLines: 8, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 8),
