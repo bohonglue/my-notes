@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../data/models.dart';
 import '../state/notes_store.dart';
+import 'attachment_image.dart';
 import 'note_actions.dart';
 import 'note_colors.dart';
 
@@ -53,7 +54,7 @@ class _TextNotePageState extends State<TextNotePage> {
     _debounce?.cancel();
     note.title = _title.text;
     note.content = jsonEncode(_quill.document.toDelta().toJson());
-    note.plainText = _quill.document.toPlainText().trim();
+    note.plainText = _quill.document.toPlainText().replaceAll('\uFFFC', '').trim();
     await context.read<NotesStore>().save(note);
   }
 
@@ -100,6 +101,7 @@ class _TextNotePageState extends State<TextNotePage> {
                   controller: _quill,
                   focusNode: _focus,
                   config: const QuillEditorConfig(
+                    embedBuilders: [AttachmentImageEmbedBuilder()],
                     placeholder: '內容',
                     expands: true,
                     padding: EdgeInsets.only(bottom: 16),
