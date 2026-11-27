@@ -4,6 +4,7 @@ import 'package:my_notes/data/database.dart';
 import 'package:my_notes/main.dart';
 import 'package:my_notes/state/notes_store.dart';
 import 'package:my_notes/state/settings_store.dart';
+import 'package:my_notes/sync/sync_service.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -26,6 +27,7 @@ void main() {
       providers: [
         ChangeNotifierProvider.value(value: notes),
         ChangeNotifierProvider.value(value: settings),
+        ChangeNotifierProvider(create: (_) => SyncService(notes)..init()),
       ],
       child: const NotesApp(),
     ));

@@ -42,6 +42,15 @@ class NotesStore extends ChangeNotifier {
 
   List<Folder> get folders => _folders;
   NoteView get view => _view;
+
+  /// 本機資料每改一次就加一（給同步判斷「有沒有要上傳的變更」）。
+  int get localChanges => _localChanges;
+  int _localChanges = 0;
+
+  void _changed() {
+    _localChanges++;
+    notifyListeners();
+  }
   String get query => _query;
 
   Future<void> load() async {
@@ -152,7 +161,7 @@ class NotesStore extends ChangeNotifier {
     if (touch) n.updatedAt = DateTime.now();
     await db.upsertNote(n);
     if (isNew) _notes.add(n);
-    notifyListeners();
+    _changed();
   }
 
   Future<void> togglePin(Note n) async {
@@ -180,7 +189,7 @@ class NotesStore extends ChangeNotifier {
   Future<void> deleteForever(Note n) async {
     await db.deleteNote(n.id);
     _notes.removeWhere((e) => e.id == n.id);
-    notifyListeners();
+    _changed();
   }
 
   Future<void> emptyTrash() async {
@@ -188,7 +197,7 @@ class NotesStore extends ChangeNotifier {
       await db.deleteNote(n.id);
     }
     _notes.removeWhere((n) => n.isTrashed);
-    notifyListeners();
+    _changed();
   }
 
   Future<void> _purgeOldTrash() async {
@@ -198,6 +207,7 @@ class NotesStore extends ChangeNotifier {
       await db.deleteNote(n.id);
     }
     _notes.removeWhere(old.contains);
+    if (old.isNotEmpty) _localChanges++;
   }
 
   // ---- 資料夾操作 ----
@@ -206,7 +216,7 @@ class NotesStore extends ChangeNotifier {
     final f = Folder(id: _uuid.v4(), name: name, parentId: parentId, updatedAt: DateTime.now());
     await db.upsertFolder(f);
     _folders = await db.allFolders();
-    notifyListeners();
+    _changed();
     return f;
   }
 
@@ -215,11 +225,12 @@ class NotesStore extends ChangeNotifier {
     f.updatedAt = DateTime.now();
     await db.upsertFolder(f);
     _folders = await db.allFolders();
-    notifyListeners();
+    _changed();
   }
 
   Future<void> deleteFolder(Folder f) async {
     await db.deleteFolder(f);
+    _localChanges++;
     if (_view case FolderView(:final folderId) when folderId == f.id) {
       _view = const AllNotesView();
     }

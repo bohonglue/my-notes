@@ -33,7 +33,10 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.50.1
-      - run: flutter build apk --release
+      - run: flutter build apk --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -48,7 +51,7 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.50.1
-      - run: flutter build windows --release
+      - run: flutter build windows --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
       - uses: actions/upload-artifact@v4
         with:
           name: windows-app

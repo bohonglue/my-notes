@@ -12,6 +12,7 @@ import 'ink_painter.dart';
 import 'note_actions.dart';
 import 'note_colors.dart';
 import 'settings_page.dart';
+import 'sync_indicator.dart';
 import 'text_note_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -78,6 +79,7 @@ class _HomePageState extends State<HomePage> {
               )
             : Text(_viewTitle(store)),
         actions: [
+          const SyncButton(),
           IconButton(
             tooltip: _searching ? '關閉搜尋' : '搜尋',
             icon: Icon(_searching ? Icons.close : Icons.search),

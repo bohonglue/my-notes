@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../data/backup_service.dart';
 import '../state/notes_store.dart';
 import '../state/settings_store.dart';
+import '../sync/sync_service.dart';
+import 'sync_indicator.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -28,6 +30,9 @@ class SettingsPage extends StatelessWidget {
               RadioListTile(value: ThemeMode.dark, title: Text('深色')),
             ]),
           ),
+          const Divider(),
+          const _Header('Google Drive 同步'),
+          const _SyncSection(),
           const Divider(),
           const _Header('備份與還原'),
           ListTile(
@@ -132,4 +137,57 @@ class _Header extends StatelessWidget {
               color: Theme.of(context).colorScheme.primary,
             )),
       );
+}
+
+class _SyncSection extends StatelessWidget {
+  const _SyncSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = context.watch<SyncService>();
+    switch (sync.status) {
+      case SyncStatus.notConfigured:
+        return const ListTile(
+          leading: Icon(Icons.cloud_off_outlined),
+          title: Text('這個版本沒有設定 Google 用戶端'),
+          subtitle: Text('需要先在 Google Cloud 建立 OAuth 用戶端並加到 GitHub secrets，重新打包後才能同步。'),
+        );
+      case SyncStatus.signedOut:
+        return ListTile(
+          leading: const Icon(Icons.cloud_outlined),
+          title: const Text('登入 Google 開始同步'),
+          subtitle: const Text('筆記只會存在你自己 Google Drive 的 app 專用資料夾，雲端硬碟裡看不到，也不會被誤刪。'),
+          onTap: () => _signIn(context, sync),
+        );
+      default:
+        return Column(children: [
+          ListTile(
+            leading: const SyncIndicator(),
+            title: Text(sync.auth.email ?? '已登入 Google'),
+            subtitle: Text(syncStatusText(sync)),
+            trailing: TextButton(
+              onPressed: sync.status == SyncStatus.syncing ? null : sync.sync,
+              child: const Text('立即同步'),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('登出 Google'),
+            subtitle: const Text('停止同步。這台裝置上的筆記會留著。'),
+            onTap: sync.signOut,
+          ),
+        ]);
+    }
+  }
+
+  Future<void> _signIn(BuildContext context, SyncService sync) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(content: Text('已開啟瀏覽器，登入後回到這裡')));
+    try {
+      await sync.signIn();
+      messenger.showSnackBar(const SnackBar(content: Text('登入成功，已開始同步')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('登入失敗：$e')));
+    }
+  }
 }

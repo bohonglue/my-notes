@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -29,11 +31,29 @@ android {
         versionName = flutter.versionName
     }
 
+    // 固定的簽章金鑰：每次打包的 APK 簽章一樣，新版才能直接覆蓋安裝舊版（資料不會被清掉）。
+    // 金鑰由 GitHub Actions 從 secrets 帶入（ANDROID_KEYSTORE_BASE64、ANDROID_KEYSTORE_PASSWORD）；
+    // 沒有設定時退回 debug 金鑰（每次打包都不一樣，更新時要先移除舊版）。
+    val keystoreB64 = System.getenv("ANDROID_KEYSTORE_BASE64").orEmpty()
+    val keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD").orEmpty()
+    val hasReleaseKey = keystoreB64.isNotBlank() && keystorePassword.isNotBlank()
+    signingConfigs {
+        create("release") {
+            if (hasReleaseKey) {
+                val f = layout.buildDirectory.file("release.jks").get().asFile
+                f.parentFile.mkdirs()
+                f.writeBytes(Base64.getMimeDecoder().decode(keystoreB64))
+                storeFile = f
+                storePassword = keystorePassword
+                keyAlias = "mynotes"
+                keyPassword = keystorePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
         }
     }
 }

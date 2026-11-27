@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'data/database.dart';
 import 'state/notes_store.dart';
 import 'state/settings_store.dart';
+import 'sync/sync_service.dart';
 import 'ui/home_page.dart';
 
 Future<void> main() async {
@@ -31,18 +33,43 @@ Future<void> main() async {
   final notes = NotesStore(db);
   final settings = SettingsStore(db);
   await Future.wait([notes.load(), settings.load()]);
+  final sync = SyncService(notes);
+  // 不等網路，先把畫面開起來；同步在背景進行。
+  unawaited(sync.init());
 
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: notes),
       ChangeNotifierProvider.value(value: settings),
+      ChangeNotifierProvider.value(value: sync),
     ],
     child: const NotesApp(),
   ));
 }
 
-class NotesApp extends StatelessWidget {
+class NotesApp extends StatefulWidget {
   const NotesApp({super.key});
+
+  @override
+  State<NotesApp> createState() => _NotesAppState();
+}
+
+class _NotesAppState extends State<NotesApp> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => context.read<SyncService>().onResumed(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
