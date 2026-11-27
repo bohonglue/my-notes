@@ -31,6 +31,9 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
+# local_auth_windows（Windows Hello）用到 <experimental/coroutine>，新版 MSVC 預設會報錯，
+# 加上這個定義讓它繼續編譯。等外掛改用 C++20 <coroutine> 後可以拿掉。
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 
 # Compilation settings that should be applied to most targets.
 #
