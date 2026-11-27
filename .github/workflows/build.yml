@@ -1,0 +1,71 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.1
+      - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.1
+      - name: Check Android signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          # 只印出長度和雜湊的前幾碼，用來判斷 secret 有沒有貼完整，不會洩漏金鑰內容。
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then echo "沒有設定簽章金鑰，改用 debug 金鑰"; exit 0; fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d -i > "$RUNNER_TEMP/k.jks" || echo "base64 解碼失敗"
+          echo "金鑰檔大小：$(stat -c %s "$RUNNER_TEMP/k.jks") bytes（正確應為 2570）"
+          echo "金鑰檔雜湊：$(sha256sum "$RUNNER_TEMP/k.jks" | cut -c1-16)（正確應為 dcdbd4baffde8168）"
+          echo "密碼長度：${#ANDROID_KEYSTORE_PASSWORD}（正確應為 24）"
+          keytool -list -keystore "$RUNNER_TEMP/k.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>&1 | grep -E "mynotes|error|incorrect" || true
+          rm -f "$RUNNER_TEMP/k.jks"
+      - run: flutter build apk --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.1
+      - run: flutter build windows --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: build/windows/x64/runner/Release/
