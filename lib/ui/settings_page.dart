@@ -5,7 +5,9 @@ import '../data/backup_service.dart';
 import '../state/notes_store.dart';
 import '../state/settings_store.dart';
 import '../sync/sync_service.dart';
+import 'app_lock.dart';
 import 'sync_indicator.dart';
+import 'update_ui.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -30,6 +32,9 @@ class SettingsPage extends StatelessWidget {
               RadioListTile(value: ThemeMode.dark, title: Text('深色')),
             ]),
           ),
+          const Divider(),
+          const _Header('安全性'),
+          const _LockSection(),
           const Divider(),
           const _Header('Google Drive 同步'),
           const _SyncSection(),
@@ -72,6 +77,9 @@ class SettingsPage extends StatelessWidget {
                   '${extra.isEmpty ? '' : '\n${extra.join('\n')}'}';
             }),
           ),
+          const Divider(),
+          const _Header('關於'),
+          const UpdateTile(),
         ],
       ),
     );
@@ -189,5 +197,55 @@ class _SyncSection extends StatelessWidget {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('登入失敗：$e')));
     }
+  }
+}
+
+class _LockSection extends StatelessWidget {
+  const _LockSection();
+
+  static String _afterText(Duration d) =>
+      d == Duration.zero ? '立即' : '${d.inMinutes} 分鐘後';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<SettingsStore>();
+    return Column(children: [
+      SwitchListTile(
+        secondary: const Icon(Icons.fingerprint),
+        title: const Text('開啟 app 時解鎖'),
+        subtitle: Text('用${DeviceAuth.methodName}解鎖。只影響這台裝置。'),
+        value: s.lockEnabled,
+        onChanged: (v) => _toggle(context, s, v),
+      ),
+      if (s.lockEnabled)
+        ListTile(
+          leading: const Icon(Icons.timer_outlined),
+          title: const Text('離開 app 多久後要重新解鎖'),
+          trailing: DropdownButton<Duration>(
+            value: s.lockAfter,
+            onChanged: (d) => s.setLockAfter(d!),
+            items: [
+              for (final d in SettingsStore.lockAfterChoices)
+                DropdownMenuItem(value: d, child: Text(_afterText(d))),
+            ],
+          ),
+        ),
+    ]);
+  }
+
+  Future<void> _toggle(BuildContext context, SettingsStore s, bool v) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final auth = DeviceAuth();
+    if (v && !await auth.isSupported()) {
+      messenger.showSnackBar(SnackBar(content: Text('這台裝置不支援${DeviceAuth.methodName}，或還沒有設定')));
+      return;
+    }
+    // 開啟或關閉都要先驗證一次：開啟時確認真的能解鎖，關閉時防止別人關掉。
+    final err = await auth.authenticate();
+    if (err != null) {
+      if (err.isNotEmpty) messenger.showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    await s.setLockEnabled(v);
   }
 }

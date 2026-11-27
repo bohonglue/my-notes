@@ -14,6 +14,8 @@ import 'data/database.dart';
 import 'state/notes_store.dart';
 import 'state/settings_store.dart';
 import 'sync/sync_service.dart';
+import 'update/update_service.dart';
+import 'ui/app_lock.dart';
 import 'ui/home_page.dart';
 
 Future<void> main() async {
@@ -36,12 +38,15 @@ Future<void> main() async {
   final sync = SyncService(notes);
   // 不等網路，先把畫面開起來；同步在背景進行。
   unawaited(sync.init());
+  final updates = UpdateService();
+  unawaited(updates.loadCurrent());
 
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: notes),
       ChangeNotifierProvider.value(value: settings),
       ChangeNotifierProvider.value(value: sync),
+      ChangeNotifierProvider.value(value: updates),
     ],
     child: const NotesApp(),
   ));
@@ -89,6 +94,7 @@ class _NotesAppState extends State<NotesApp> {
         GlobalCupertinoLocalizations.delegate,
         FlutterQuillLocalizations.delegate,
       ],
+      builder: (context, child) => AppLock(child: child!),
       home: const HomePage(),
     );
   }

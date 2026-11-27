@@ -13,6 +13,8 @@ import 'note_actions.dart';
 import 'note_colors.dart';
 import 'settings_page.dart';
 import 'sync_indicator.dart';
+import 'update_ui.dart';
+import '../update/update_service.dart';
 import 'text_note_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,6 +27,21 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _search = TextEditingController();
   bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 開 app 時在背景檢查一次更新，有新版就在下方提示。
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final rel = await context.read<UpdateService>().check(silent: true);
+      if (rel == null || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('有新版本 ${rel.version}'),
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(label: '更新', onPressed: () => showUpdateDialog(context)),
+      ));
+    });
+  }
 
   @override
   void dispose() {

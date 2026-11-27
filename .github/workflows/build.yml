@@ -46,7 +46,7 @@ jobs:
           echo "密碼長度：${#ANDROID_KEYSTORE_PASSWORD}（正確應為 24）"
           keytool -list -keystore "$RUNNER_TEMP/k.jks" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>&1 | grep -E "mynotes|error|incorrect" || true
           rm -f "$RUNNER_TEMP/k.jks"
-      - run: flutter build apk --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+      - run: flutter build apk --release --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -64,8 +64,33 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.50.1
-      - run: flutter build windows --release --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+      - run: flutter build windows --release --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} --dart-define=GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
       - uses: actions/upload-artifact@v4
         with:
           name: windows-app
           path: build/windows/x64/runner/Release/
+
+  # 合併到 main 時，把安裝檔發佈到公開的 my-notes-releases（只有安裝檔，沒有程式碼），
+  # app 裡的「檢查更新」會讀那裡的最新版本。需要 secret RELEASES_TOKEN。
+  release:
+    needs: [android, windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          VERSION: 1.0.${{ github.run_number }}
+          NOTES: ${{ github.event.head_commit.message }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "沒有設定 RELEASES_TOKEN，略過發佈"; exit 0; fi
+          cp dist/android-apk/app-release.apk "my-notes-$VERSION.apk"
+          (cd dist/windows-app && zip -qr "../../my-notes-windows-$VERSION.zip" .)
+          gh release create "v$VERSION" \
+            --repo "${{ github.repository_owner }}/my-notes-releases" \
+            --title "我的筆記 $VERSION" \
+            --notes "$NOTES" \
+            "my-notes-$VERSION.apk" "my-notes-windows-$VERSION.zip"

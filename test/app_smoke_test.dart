@@ -5,6 +5,9 @@ import 'package:my_notes/main.dart';
 import 'package:my_notes/state/notes_store.dart';
 import 'package:my_notes/state/settings_store.dart';
 import 'package:my_notes/sync/sync_service.dart';
+import 'package:my_notes/update/update_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -28,6 +31,11 @@ void main() {
         ChangeNotifierProvider.value(value: notes),
         ChangeNotifierProvider.value(value: settings),
         ChangeNotifierProvider(create: (_) => SyncService(notes)..init()),
+        ChangeNotifierProvider(
+          create: (_) => UpdateService(client: MockClient((_) async => http.Response('', 404)))
+            ..currentBuild = 1
+            ..currentVersion = '1.0.1',
+        ),
       ],
       child: const NotesApp(),
     ));

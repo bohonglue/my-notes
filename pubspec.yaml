@@ -50,6 +50,10 @@ dependencies:
   url_launcher: ^6.3.3
   flutter_secure_storage: ^11.2.0
   http: ^1.6.0
+  local_auth: ^3.0.2
+  package_info_plus: ^10.2.2
+  open_filex: ^5.0.0
+  archive: ^4.7.1
 
 dev_dependencies:
   flutter_test:
